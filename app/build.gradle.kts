@@ -22,8 +22,8 @@ android {
         applicationId = "wedding.todo"
         minSdk = 28
         targetSdk = 37
-        versionCode = 1
-        versionName = "v1.0.0"
+        versionCode = 2
+        versionName = "v1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
