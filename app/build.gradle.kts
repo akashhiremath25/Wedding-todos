@@ -22,8 +22,8 @@ android {
         applicationId = "wedding.todo"
         minSdk = 28
         targetSdk = 37
-        versionCode = 2
-        versionName = "v1.0.1"
+        versionCode = 3
+        versionName = "v1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -94,6 +94,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.gson)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

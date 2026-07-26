@@ -1,8 +1,11 @@
 package com.shradhaabhishek.weddingtodos.viewmodel
 
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -10,11 +13,16 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.shradhaabhishek.weddingtodos.model.Task
+import com.shradhaabhishek.weddingtodos.util.NotificationScheduler
+import com.shradhaabhishek.weddingtodos.util.TaskStorage
+import com.shradhaabhishek.weddingtodos.worker.SyncWorker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 sealed class AuthState {
     object Initial : AuthState()
@@ -25,7 +33,7 @@ sealed class AuthState {
     object AccessDenied : AuthState()
 }
 
-class TaskViewModel : ViewModel() {
+class TaskViewModel(application: Application) : AndroidViewModel(application) {
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
 
@@ -109,6 +117,23 @@ class TaskViewModel : ViewModel() {
                     val taskList = snapshot.toObjects(Task::class.java)
                     Log.d("TaskViewModel", "Received ${taskList.size} tasks")
                     _tasks.value = taskList
+                    
+                    // Schedule precision alarms
+                    NotificationScheduler.scheduleAllTasks(getApplication(), taskList)
+                    
+                    // Also save to local storage for offline/notifications
+                    viewModelScope.launch {
+                        val groupedTasks = taskList.groupBy { it.dueDate?.take(10) ?: "TBD" }
+                        groupedTasks.forEach { (date, tasksForDate) ->
+                            if (date != "TBD") {
+                                Log.d("TaskViewModel", "Real-time save for $date: ${tasksForDate.joinToString { "${it.id}(${it.dueDate})" }}")
+                                TaskStorage.saveTasksForDate(getApplication(), date, tasksForDate)
+                            }
+                        }
+                        // Trigger an immediate notification check after local save
+                        val notifyRequest = OneTimeWorkRequestBuilder<com.shradhaabhishek.weddingtodos.worker.NotificationWorker>().build()
+                        WorkManager.getInstance(getApplication()).enqueue(notifyRequest)
+                    }
                 }
             }
     }
@@ -145,6 +170,11 @@ class TaskViewModel : ViewModel() {
     fun signOut() {
         Log.d("TaskViewModel", "Signing out")
         auth.signOut()
+    }
+
+    fun syncManual() {
+        val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>().build()
+        WorkManager.getInstance(getApplication()).enqueue(syncRequest)
     }
 
     fun signInWithGoogle(idToken: String) {

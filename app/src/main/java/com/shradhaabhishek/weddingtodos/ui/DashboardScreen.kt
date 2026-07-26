@@ -105,6 +105,9 @@ fun DashboardScreen(
                             )
                         }
                     }
+                    IconButton(onClick = { viewModel.syncManual() }) {
+                        Icon(Icons.Default.Sync, "Sync Tasks", tint = MaterialTheme.colorScheme.primary)
+                    }
                     IconButton(onClick = { viewModel.signOut() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.Logout, 

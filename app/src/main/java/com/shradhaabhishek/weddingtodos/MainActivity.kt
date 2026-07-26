@@ -1,16 +1,23 @@
 package com.shradhaabhishek.weddingtodos
 
+import android.Manifest
+import android.app.AlarmManager
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.animation.AnimatedContent
@@ -46,6 +53,7 @@ import com.shradhaabhishek.weddingtodos.ui.TaskEditor
 import com.shradhaabhishek.weddingtodos.viewmodel.TaskViewModel
 import com.shradhaabhishek.weddingtodos.viewmodel.AuthState
 import com.shradhaabhishek.weddingtodos.ui.theme.WeddingTodosTheme
+import com.shradhaabhishek.weddingtodos.util.TaskStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,12 +61,60 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
     private val viewModel: TaskViewModel by viewModels()
 
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (!isGranted) {
+            Toast.makeText(this, "Notifications are disabled. You won't receive task reminders.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) 
+                != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        
+        checkExactAlarmPermission()
+    }
+
+    private fun checkExactAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                AlertDialog.Builder(this)
+                    .setTitle("Precise Reminders")
+                    .setMessage("To receive reminders exactly at the right time, the app needs the 'Alarms & Reminders' permission.")
+                    .setPositiveButton("Settings") { _, _ ->
+                        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                            data = Uri.parse("package:$packageName")
+                        }
+                        startActivity(intent)
+                    }
+                    .setNegativeButton("Later", null)
+                    .show()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        requestNotificationPermission()
+
+        // Check if today's file exists, if not trigger a sync
+        val today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        if (!TaskStorage.hasFileForDate(this, today)) {
+            viewModel.syncManual()
+        }
         
         setContent {
             WeddingTodosTheme {
