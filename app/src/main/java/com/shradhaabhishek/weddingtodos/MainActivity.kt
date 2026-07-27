@@ -33,11 +33,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -53,7 +49,6 @@ import com.shradhaabhishek.weddingtodos.ui.TaskEditor
 import com.shradhaabhishek.weddingtodos.viewmodel.TaskViewModel
 import com.shradhaabhishek.weddingtodos.viewmodel.AuthState
 import com.shradhaabhishek.weddingtodos.ui.theme.WeddingTodosTheme
-import com.shradhaabhishek.weddingtodos.util.TaskStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -61,8 +56,6 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
     private val viewModel: TaskViewModel by viewModels()
@@ -110,17 +103,16 @@ class MainActivity : ComponentActivity() {
         
         requestNotificationPermission()
 
-        // Check if today's file exists, if not trigger a sync
-        val today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        if (!TaskStorage.hasFileForDate(this, today)) {
-            viewModel.syncManual()
-        }
-        
         setContent {
             WeddingTodosTheme {
                 val authState by viewModel.authState.collectAsState()
                 var editingTask by remember { mutableStateOf<Task?>(null) }
                 val context = LocalContext.current
+                
+                // Handle tab selection from intent
+                var initialTab by remember { 
+                    mutableIntStateOf(if (intent?.getStringExtra("OPEN_TAB") == "BROADCASTS") 1 else 0) 
+                }
 
                 AnimatedContent(
                     targetState = authState,
@@ -139,7 +131,8 @@ class MainActivity : ComponentActivity() {
                             Box {
                                 DashboardScreen(
                                     viewModel = viewModel,
-                                    onEditTask = { editingTask = it }
+                                    onEditTask = { editingTask = it },
+                                    initialTab = initialTab
                                 )
 
                                 editingTask?.let { task ->

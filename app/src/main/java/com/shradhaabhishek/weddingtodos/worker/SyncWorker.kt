@@ -3,7 +3,6 @@ package com.shradhaabhishek.weddingtodos.worker
 import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.google.firebase.firestore.FirebaseFirestore
@@ -33,10 +32,6 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                     TaskStorage.saveTasksForDate(applicationContext, date, tasksForDate)
                 }
             }
-
-            // Trigger an immediate notification check after sync
-            val notifyRequest = OneTimeWorkRequestBuilder<NotificationWorker>().build()
-            WorkManager.getInstance(applicationContext).enqueue(notifyRequest)
 
             Result.success()
         } catch (e: Exception) {

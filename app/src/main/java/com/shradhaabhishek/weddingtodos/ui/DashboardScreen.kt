@@ -17,12 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,6 +35,51 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
+    viewModel: TaskViewModel,
+    onEditTask: (Task) -> Unit,
+    initialTab: Int = 0
+) {
+    var selectedTab by remember { mutableIntStateOf(initialTab) }
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
+            ) {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.Event, null) },
+                    label = { Text("Itinerary") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { 
+                        BadgedBox(badge = {
+                            // Optional: Add badge logic here for unread messages
+                        }) {
+                            Icon(Icons.Default.Chat, null)
+                        }
+                    },
+                    label = { Text("Broadcasts") }
+                )
+            }
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when (selectedTab) {
+                0 -> ItineraryContent(viewModel, onEditTask)
+                1 -> BroadcastChatScreen(viewModel)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun ItineraryContent(
     viewModel: TaskViewModel,
     onEditTask: (Task) -> Unit
 ) {
@@ -299,6 +339,7 @@ fun TaskCard(
         border = androidx.compose.foundation.BorderStroke(1.dp, outlineColor)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Title and Top section
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -348,34 +389,35 @@ fun TaskCard(
                 }
             }
 
-            if (!task.location.isNullOrEmpty() || !task.username.isNullOrEmpty()) {
+            // Location for non-admins or if not in admin row
+            if (!isAdmin && !task.location.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Place, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        task.location, 
+                        style = MaterialTheme.typography.labelMedium, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (!task.username.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(), 
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (!task.location.isNullOrEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Place, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                task.location, 
-                                style = MaterialTheme.typography.labelMedium, 
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    if (!task.username.isNullOrEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Person, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                task.username, 
-                                style = MaterialTheme.typography.labelMedium, 
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Person, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            task.username, 
+                            style = MaterialTheme.typography.labelMedium, 
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -413,9 +455,32 @@ fun TaskCard(
                 HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp), 
-                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (!task.location.isNullOrEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                Icons.Default.Place, 
+                                null, 
+                                modifier = Modifier.size(14.dp), 
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                task.location, 
+                                style = MaterialTheme.typography.labelSmall, 
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+
                     TextButton(onClick = onEdit) { 
                         Text("Modify", style = MaterialTheme.typography.labelLarge) 
                     }

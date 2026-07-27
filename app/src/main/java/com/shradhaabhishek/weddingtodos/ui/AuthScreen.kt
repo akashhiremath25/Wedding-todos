@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.shradhaabhishek.weddingtodos.R
 import com.shradhaabhishek.weddingtodos.viewmodel.TaskViewModel
 
 @Composable
@@ -31,8 +32,10 @@ fun AuthScreen(viewModel: TaskViewModel) {
                 try {
                     val account = task.getResult(ApiException::class.java)
                     account.idToken?.let { viewModel.signInWithGoogle(it) }
+                } catch (e: ApiException) {
+                    Toast.makeText(context, "Sign-in failed: ${e.statusCode} - ${e.message}", Toast.LENGTH_LONG).show()
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Sign-in failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -84,8 +87,9 @@ fun AuthScreen(viewModel: TaskViewModel) {
                     
                     Button(
                         onClick = {
+                            val webClientId = context.getString(R.string.default_web_client_id)
                             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                                .requestIdToken("694254081284-136j6fno10cbvm7njkl4jbo1ti0dl7fp.apps.googleusercontent.com")
+                                .requestIdToken(webClientId)
                                 .requestEmail()
                                 .build()
                             val client = GoogleSignIn.getClient(context, gso)

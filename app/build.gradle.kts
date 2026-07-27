@@ -22,8 +22,8 @@ android {
         applicationId = "wedding.todo"
         minSdk = 28
         targetSdk = 37
-        versionCode = 3
-        versionName = "v1.0.2"
+        versionCode = 4
+        versionName = "v1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -78,6 +78,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
     implementation(libs.play.services.auth)
+    implementation(libs.firebase.messaging)
 
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
